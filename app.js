@@ -1,8 +1,9 @@
- 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const SUPABASE_URL = "https://koqiyygtjcxhmkdypsbo.supabase.co";
-const SUPABASE_KEY = "sb_publishable_...";
+
+// HIER deinen sb_publishable_... Key einsetzen
+const SUPABASE_KEY = "DEIN_PUBLISHABLE_KEY";
 
 const supabase = createClient(
   SUPABASE_URL,
@@ -32,32 +33,35 @@ let currentUser = null;
 // =========================
 
 loginButton.addEventListener("click", async () => {
+
   const email = emailInput.value.trim();
   const password = passwordInput.value;
 
   loginError.textContent = "";
 
   if (!email || !password) {
-    loginError.textContent = "Bitte E-Mail und Passwort eingeben.";
+    loginError.textContent =
+      "Bitte E-Mail und Passwort eingeben.";
     return;
   }
 
   loginButton.disabled = true;
   loginButton.textContent = "Anmelden...";
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { data, error } =
+    await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
 
   loginButton.disabled = false;
   loginButton.textContent = "Anmelden";
 
   if (error) {
-  loginError.textContent = error.message;
-  console.error(error);
-  return;
-}
+    loginError.textContent = error.message;
+    console.error("Login-Fehler:", error);
+    return;
+  }
 
   currentUser = data.user;
 
@@ -70,6 +74,7 @@ loginButton.addEventListener("click", async () => {
 // =========================
 
 logoutButton.addEventListener("click", async () => {
+
   await supabase.auth.signOut();
 
   currentUser = null;
@@ -86,6 +91,7 @@ logoutButton.addEventListener("click", async () => {
 // =========================
 
 function showChat() {
+
   loginScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
 
@@ -98,6 +104,7 @@ function showChat() {
 // =========================
 
 async function loadMessages() {
+
   const { data, error } = await supabase
     .from("messages")
     .select("*")
@@ -106,7 +113,12 @@ async function loadMessages() {
     });
 
   if (error) {
-    console.error(error);
+
+    console.error(
+      "Fehler beim Laden der Nachrichten:",
+      error
+    );
+
     return;
   }
 
@@ -125,37 +137,53 @@ async function loadMessages() {
 // =========================
 
 function displayMessage(message) {
-  const messageElement = document.createElement("div");
+
+  const messageElement =
+    document.createElement("div");
 
   messageElement.classList.add("message");
 
   if (message.user_id === currentUser.id) {
+
     messageElement.classList.add("mine");
+
   } else {
+
     messageElement.classList.add("theirs");
+
   }
 
   if (message.content) {
-    const text = document.createElement("div");
+
+    const text =
+      document.createElement("div");
+
     text.textContent = message.content;
 
     messageElement.appendChild(text);
   }
 
-  const timestamp = document.createElement("span");
+  const timestamp =
+    document.createElement("span");
 
   timestamp.className = "timestamp";
 
-  timestamp.textContent = new Date(
-    message.created_at
-  ).toLocaleTimeString("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  timestamp.textContent =
+    new Date(
+      message.created_at
+    ).toLocaleTimeString(
+      "de-DE",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
 
   messageElement.appendChild(timestamp);
 
-  messagesContainer.appendChild(messageElement);
+  messagesContainer.appendChild(
+    messageElement
+  );
 }
 
 
@@ -164,7 +192,9 @@ function displayMessage(message) {
 // =========================
 
 async function sendMessage() {
-  const content = messageInput.value.trim();
+
+  const content =
+    messageInput.value.trim();
 
   if (!content || !currentUser) {
     return;
@@ -172,18 +202,27 @@ async function sendMessage() {
 
   sendButton.disabled = true;
 
-  const { error } = await supabase
-    .from("messages")
-    .insert({
-      user_id: currentUser.id,
-      content: content
-    });
+  const { error } =
+    await supabase
+      .from("messages")
+      .insert({
+        user_id: currentUser.id,
+        content: content
+      });
 
   sendButton.disabled = false;
 
   if (error) {
-    console.error(error);
-    alert("Nachricht konnte nicht gesendet werden.");
+
+    console.error(
+      "Fehler beim Senden:",
+      error
+    );
+
+    alert(
+      "Nachricht konnte nicht gesendet werden."
+    );
+
     return;
   }
 
@@ -195,27 +234,37 @@ async function sendMessage() {
 // SENDEN BUTTON
 // =========================
 
-sendButton.addEventListener("click", sendMessage);
+sendButton.addEventListener(
+  "click",
+  sendMessage
+);
 
 
 // =========================
 // ENTER = SENDEN
 // =========================
 
-messageInput.addEventListener("keydown", event => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    sendMessage();
+messageInput.addEventListener(
+  "keydown",
+  event => {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
+
+      sendMessage();
+    }
   }
-});
+);
 
 
 // =========================
-// LIVE NACHRICHTEN
+// LIVE-NACHRICHTEN
 // =========================
 
 supabase
   .channel("messages-channel")
+
   .on(
     "postgres_changes",
     {
@@ -223,17 +272,21 @@ supabase
       schema: "public",
       table: "messages"
     },
+
     payload => {
 
       if (!currentUser) {
         return;
       }
 
-      displayMessage(payload.new);
+      displayMessage(
+        payload.new
+      );
 
       scrollToBottom();
     }
   )
+
   .subscribe();
 
 
@@ -242,6 +295,7 @@ supabase
 // =========================
 
 function scrollToBottom() {
+
   messagesContainer.scrollTop =
     messagesContainer.scrollHeight;
 }
@@ -252,16 +306,22 @@ function scrollToBottom() {
 // =========================
 
 async function checkSession() {
+
   const {
     data: {
       session
     }
-  } = await supabase.auth.getSession();
+  } =
+    await supabase.auth.getSession();
 
   if (session) {
-    currentUser = session.user;
+
+    currentUser =
+      session.user;
+
     showChat();
   }
 }
+
 
 checkSession();
