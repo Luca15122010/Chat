@@ -11,9 +11,9 @@ const supabase = createClient(
 );
 
 
-// ===============================
+// ==========================================
 // ELEMENTE
-// ===============================
+// ==========================================
 
 const loginScreen = document.getElementById("login-screen");
 const chatScreen = document.getElementById("chat-screen");
@@ -35,9 +35,9 @@ const fileInput = document.getElementById("file-input");
 let currentUser = null;
 
 
-// ===============================
+// ==========================================
 // LOGIN
-// ===============================
+// ==========================================
 
 loginButton.addEventListener("click", async () => {
 
@@ -65,8 +65,15 @@ loginButton.addEventListener("click", async () => {
   loginButton.textContent = "Anmelden";
 
   if (error) {
-    loginError.textContent = error.message;
-    console.error("Login:", error);
+
+    loginError.textContent =
+      error.message;
+
+    console.error(
+      "Login-Fehler:",
+      error
+    );
+
     return;
   }
 
@@ -76,9 +83,9 @@ loginButton.addEventListener("click", async () => {
 });
 
 
-// ===============================
+// ==========================================
 // LOGOUT
-// ===============================
+// ==========================================
 
 logoutButton.addEventListener("click", async () => {
 
@@ -93,9 +100,9 @@ logoutButton.addEventListener("click", async () => {
 });
 
 
-// ===============================
+// ==========================================
 // CHAT ANZEIGEN
-// ===============================
+// ==========================================
 
 function showChat() {
 
@@ -106,21 +113,29 @@ function showChat() {
 }
 
 
-// ===============================
-// AUSGEBLENDETE NACHRICHTEN
-// ===============================
+// ==========================================
+// AUSGEBLENDETE NACHRICHTEN LADEN
+// ==========================================
 
 async function getHiddenMessageIds() {
+
+  if (!currentUser) {
+    return new Set();
+  }
 
   const { data, error } =
     await supabase
       .from("hidden_messages")
       .select("message_id")
-      .eq("user_id", currentUser.id);
+      .eq(
+        "user_id",
+        currentUser.id
+      );
 
   if (error) {
+
     console.error(
-      "Hidden messages:",
+      "Fehler bei hidden_messages:",
       error
     );
 
@@ -128,18 +143,20 @@ async function getHiddenMessageIds() {
   }
 
   return new Set(
-    data.map(item => item.message_id)
+    data.map(row => row.message_id)
   );
 }
 
 
-// ===============================
-// NACHRICHTEN LADEN
-// ===============================
+// ==========================================
+// ALLE NACHRICHTEN LADEN
+// ==========================================
 
 async function loadMessages() {
 
-  if (!currentUser) return;
+  if (!currentUser) {
+    return;
+  }
 
   const hiddenIds =
     await getHiddenMessageIds();
@@ -155,7 +172,7 @@ async function loadMessages() {
   if (error) {
 
     console.error(
-      "Nachrichten:",
+      "Fehler beim Laden:",
       error
     );
 
@@ -164,43 +181,76 @@ async function loadMessages() {
 
   messagesContainer.innerHTML = "";
 
-  data.forEach(message => {
+  for (const message of data) {
 
-    if (hiddenIds.has(message.id)) {
-      return;
+    if (
+      hiddenIds.has(message.id)
+    ) {
+      continue;
     }
 
     displayMessage(message);
-
-  });
+  }
 
   scrollToBottom();
 }
 
 
-// ===============================
+// ==========================================
 // NACHRICHT ANZEIGEN
-// ===============================
+// ==========================================
 
 function displayMessage(message) {
+
+  if (!message || !message.id) {
+    return;
+  }
+
+
+  // Prüfen, ob Nachricht bereits existiert
+
+  const existing =
+    document.querySelector(
+      `[data-message-id="${message.id}"]`
+    );
+
+  if (existing) {
+    return;
+  }
+
 
   const messageElement =
     document.createElement("div");
 
-  messageElement.classList.add("message");
+  messageElement.className =
+    "message";
+
+  messageElement.dataset.messageId =
+    message.id;
+
 
   const isMine =
     currentUser &&
     message.user_id === currentUser.id;
 
+
   if (isMine) {
-    messageElement.classList.add("mine");
+
+    messageElement.classList.add(
+      "mine"
+    );
+
   } else {
-    messageElement.classList.add("theirs");
+
+    messageElement.classList.add(
+      "theirs"
+    );
   }
 
 
+  // ========================================
   // TEXT
+  // ========================================
 
   if (message.content) {
 
@@ -210,16 +260,22 @@ function displayMessage(message) {
     text.textContent =
       message.content;
 
-    messageElement.appendChild(text);
+    messageElement.appendChild(
+      text
+    );
   }
 
 
+  // ========================================
   // BILD
+  // ========================================
 
   if (
     message.file_url &&
     message.file_type &&
-    message.file_type.startsWith("image/")
+    message.file_type.startsWith(
+      "image/"
+    )
   ) {
 
     const image =
@@ -234,16 +290,28 @@ function displayMessage(message) {
     image.loading =
       "lazy";
 
-    messageElement.appendChild(image);
+    image.style.maxWidth =
+      "100%";
+
+    image.style.borderRadius =
+      "12px";
+
+    messageElement.appendChild(
+      image
+    );
   }
 
 
+  // ========================================
   // VIDEO
+  // ========================================
 
   if (
     message.file_url &&
     message.file_type &&
-    message.file_type.startsWith("video/")
+    message.file_type.startsWith(
+      "video/"
+    )
   ) {
 
     const video =
@@ -261,11 +329,21 @@ function displayMessage(message) {
     video.preload =
       "metadata";
 
-    messageElement.appendChild(video);
+    video.style.maxWidth =
+      "100%";
+
+    video.style.borderRadius =
+      "12px";
+
+    messageElement.appendChild(
+      video
+    );
   }
 
 
+  // ========================================
   // ZEIT
+  // ========================================
 
   const timestamp =
     document.createElement("span");
@@ -289,9 +367,9 @@ function displayMessage(message) {
   );
 
 
-  // ===============================
+  // ========================================
   // LÖSCHEN
-  // ===============================
+  // ========================================
 
   const deleteButton =
     document.createElement("button");
@@ -307,30 +385,29 @@ function displayMessage(message) {
     "click",
     async () => {
 
-      const confirmed =
-        confirm(
-          isMine
-            ? "Nachricht für beide löschen?"
-            : "Nachricht nur für dich löschen?"
-        );
-
-      if (!confirmed) return;
-
-
-      // =========================
-      // EIGENE NACHRICHT
-      // =========================
-      //
-      // Wird für BEIDE gelöscht.
-      //
-
       if (isMine) {
+
+        const confirmed =
+          confirm(
+            "Diese Nachricht für beide löschen?"
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+
+        // Eigene Nachricht:
+        // vollständig aus messages löschen
 
         const { error } =
           await supabase
             .from("messages")
             .delete()
-            .eq("id", message.id)
+            .eq(
+              "id",
+              message.id
+            )
             .eq(
               "user_id",
               currentUser.id
@@ -339,7 +416,7 @@ function displayMessage(message) {
         if (error) {
 
           console.error(
-            "Löschen:",
+            "Delete-Fehler:",
             error
           );
 
@@ -352,46 +429,54 @@ function displayMessage(message) {
         }
 
 
+        // Sofort lokal entfernen
+
         messageElement.remove();
 
-        return;
+      } else {
+
+        const confirmed =
+          confirm(
+            "Diese Nachricht nur bei dir ausblenden?"
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+
+        // Nachricht der Freundin:
+        // nur für diesen Benutzer ausblenden
+
+        const { error } =
+          await supabase
+            .from("hidden_messages")
+            .insert({
+              message_id:
+                message.id,
+
+              user_id:
+                currentUser.id
+            });
+
+        if (error) {
+
+          console.error(
+            "Hide-Fehler:",
+            error
+          );
+
+          alert(
+            "Nachricht konnte nicht ausgeblendet werden:\n\n" +
+            error.message
+          );
+
+          return;
+        }
+
+
+        messageElement.remove();
       }
-
-
-      // =========================
-      // NACHRICHT DER FREUNDIN
-      // =========================
-      //
-      // Nur bei DIR ausblenden.
-      //
-
-      const { error } =
-        await supabase
-          .from("hidden_messages")
-          .insert({
-            message_id:
-              message.id,
-
-            user_id:
-              currentUser.id
-          });
-
-      if (error) {
-
-        console.error(
-          "Ausblenden:",
-          error
-        );
-
-        alert(
-          "Nachricht konnte nicht ausgeblendet werden:\n\n" +
-          error.message
-        );
-
-        return;
-      }
-
-      messageElement.remove();
     }
   );
 
@@ -400,28 +485,33 @@ function displayMessage(message) {
     deleteButton
   );
 
+
   messagesContainer.appendChild(
     messageElement
   );
 }
 
 
-// ===============================
-// TEXT SENDEN
-// ===============================
+// ==========================================
+// TEXTNACHRICHT SENDEN
+// ==========================================
 
 async function sendMessage() {
 
   const content =
     messageInput.value.trim();
 
-  if (!content || !currentUser) {
+  if (
+    !content ||
+    !currentUser
+  ) {
     return;
   }
 
-  sendButton.disabled = true;
+  sendButton.disabled =
+    true;
 
-  const { error } =
+  const { data, error } =
     await supabase
       .from("messages")
       .insert({
@@ -430,14 +520,18 @@ async function sendMessage() {
 
         content:
           content
-      });
+      })
+      .select()
+      .single();
 
-  sendButton.disabled = false;
+  sendButton.disabled =
+    false;
+
 
   if (error) {
 
     console.error(
-      "Senden:",
+      "Send-Fehler:",
       error
     );
 
@@ -449,27 +543,46 @@ async function sendMessage() {
     return;
   }
 
+
+  // SOFORT anzeigen
+
+  displayMessage(data);
+
   messageInput.value = "";
+
+  scrollToBottom();
 }
 
 
-// ===============================
+// ==========================================
 // DATEI HOCHLADEN
-// ===============================
+// ==========================================
 
 async function uploadFile(file) {
 
-  if (!currentUser || !file) {
+  if (
+    !currentUser ||
+    !file
+  ) {
     return;
   }
 
+
   const isImage =
-    file.type.startsWith("image/");
+    file.type.startsWith(
+      "image/"
+    );
 
   const isVideo =
-    file.type.startsWith("video/");
+    file.type.startsWith(
+      "video/"
+    );
 
-  if (!isImage && !isVideo) {
+
+  if (
+    !isImage &&
+    !isVideo
+  ) {
 
     alert(
       "Bitte nur Bilder oder Videos auswählen."
@@ -484,7 +597,9 @@ async function uploadFile(file) {
   const maxSize =
     50 * 1024 * 1024;
 
-  if (file.size > maxSize) {
+  if (
+    file.size > maxSize
+  ) {
 
     alert(
       "Die Datei darf maximal 50 MB groß sein."
@@ -501,18 +616,24 @@ async function uploadFile(file) {
         )
       : "";
 
+
   const fileName =
     `${crypto.randomUUID()}${extension}`;
+
 
   const filePath =
     `${currentUser.id}/${fileName}`;
 
 
-  fileInput.disabled = true;
+  fileInput.disabled =
+    true;
+
 
   try {
 
+    // ======================================
     // UPLOAD
+    // ======================================
 
     const {
       error: uploadError
@@ -523,11 +644,17 @@ async function uploadFile(file) {
           filePath,
           file,
           {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: file.type
+            cacheControl:
+              "3600",
+
+            upsert:
+              false,
+
+            contentType:
+              file.type
           }
         );
+
 
     if (uploadError) {
 
@@ -545,7 +672,9 @@ async function uploadFile(file) {
     }
 
 
+    // ======================================
     // SIGNIERTE URL
+    // ======================================
 
     const {
       data: urlData,
@@ -558,6 +687,7 @@ async function uploadFile(file) {
           60 * 60 * 24 * 365
         );
 
+
     if (urlError) {
 
       console.error(
@@ -566,16 +696,19 @@ async function uploadFile(file) {
       );
 
       alert(
-        "Datei wurde hochgeladen, aber die URL konnte nicht erstellt werden."
+        "Die Datei wurde hochgeladen, aber die URL konnte nicht erstellt werden."
       );
 
       return;
     }
 
 
+    // ======================================
     // NACHRICHT ERSTELLEN
+    // ======================================
 
     const {
+      data: message,
       error: messageError
     } =
       await supabase
@@ -592,7 +725,10 @@ async function uploadFile(file) {
 
           file_type:
             file.type
-        });
+        })
+        .select()
+        .single();
+
 
     if (messageError) {
 
@@ -609,18 +745,27 @@ async function uploadFile(file) {
       return;
     }
 
+
+    // SOFORT ANZEIGEN
+
+    displayMessage(message);
+
+    scrollToBottom();
+
   } finally {
 
-    fileInput.disabled = false;
+    fileInput.disabled =
+      false;
 
-    fileInput.value = "";
+    fileInput.value =
+      "";
   }
 }
 
 
-// ===============================
+// ==========================================
 // DATEI AUSWÄHLEN
-// ===============================
+// ==========================================
 
 fileInput.addEventListener(
   "change",
@@ -629,16 +774,18 @@ fileInput.addEventListener(
     const file =
       fileInput.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     await uploadFile(file);
   }
 );
 
 
-// ===============================
-// SENDEN
-// ===============================
+// ==========================================
+// SENDEN BUTTON
+// ==========================================
 
 sendButton.addEventListener(
   "click",
@@ -646,15 +793,18 @@ sendButton.addEventListener(
 );
 
 
-// ===============================
-// ENTER
-// ===============================
+// ==========================================
+// ENTER = SENDEN
+// ==========================================
 
 messageInput.addEventListener(
   "keydown",
   event => {
 
-    if (event.key === "Enter") {
+    if (
+      event.key ===
+      "Enter"
+    ) {
 
       event.preventDefault();
 
@@ -664,24 +814,53 @@ messageInput.addEventListener(
 );
 
 
-// ===============================
+// ==========================================
 // REALTIME
-// ===============================
+// ==========================================
 
 supabase
-  .channel("messages-channel")
+  .channel(
+    "messages-channel"
+  )
+
+  // ========================================
+  // NEUE NACHRICHT
+  // ========================================
 
   .on(
     "postgres_changes",
     {
-      event: "INSERT",
-      schema: "public",
-      table: "messages"
+      event:
+        "INSERT",
+
+      schema:
+        "public",
+
+      table:
+        "messages"
     },
 
-    payload => {
+    async payload => {
 
-      if (!currentUser) return;
+      if (
+        !currentUser
+      ) {
+        return;
+      }
+
+
+      const hiddenIds =
+        await getHiddenMessageIds();
+
+
+      if (
+        hiddenIds.has(
+          payload.new.id
+        )
+      ) {
+        return;
+      }
+
 
       displayMessage(
         payload.new
@@ -691,12 +870,22 @@ supabase
     }
   )
 
+
+  // ========================================
+  // GELÖSCHTE NACHRICHT
+  // ========================================
+
   .on(
     "postgres_changes",
     {
-      event: "DELETE",
-      schema: "public",
-      table: "messages"
+      event:
+        "DELETE",
+
+      schema:
+        "public",
+
+      table:
+        "messages"
     },
 
     payload => {
@@ -712,12 +901,13 @@ supabase
     }
   )
 
+
   .subscribe();
 
 
-// ===============================
+// ==========================================
 // SCROLL
-// ===============================
+// ==========================================
 
 function scrollToBottom() {
 
@@ -726,9 +916,9 @@ function scrollToBottom() {
 }
 
 
-// ===============================
-// SESSION
-// ===============================
+// ==========================================
+// SESSION PRÜFEN
+// ==========================================
 
 async function checkSession() {
 
@@ -737,6 +927,7 @@ async function checkSession() {
     error
   } =
     await supabase.auth.getSession();
+
 
   if (error) {
 
@@ -748,7 +939,11 @@ async function checkSession() {
     return;
   }
 
-  if (data.session) {
+
+  if (
+    data &&
+    data.session
+  ) {
 
     currentUser =
       data.session.user;
@@ -758,8 +953,8 @@ async function checkSession() {
 }
 
 
-// ===============================
+// ==========================================
 // START
-// ===============================
+// ==========================================
 
 checkSession();
