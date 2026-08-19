@@ -2,28 +2,53 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = "https://koqiyygtjcxhmkdypsbo.supabase.co";
 
-// HIER deinen sb_publishable_... Key einsetzen
-const SUPABASE_KEY = "DEIN_PUBLISHABLE_KEY";
+const SUPABASE_KEY =
+  "sb_publishable_ffqFk89gZw1nNbfnPpJi9A_nC2aJN9e";
 
 const supabase = createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
 
-const loginScreen = document.getElementById("login-screen");
-const chatScreen = document.getElementById("chat-screen");
 
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
+// =========================
+// ELEMENTE
+// =========================
 
-const loginButton = document.getElementById("login-button");
-const logoutButton = document.getElementById("logout-button");
+const loginScreen =
+  document.getElementById("login-screen");
 
-const loginError = document.getElementById("login-error");
+const chatScreen =
+  document.getElementById("chat-screen");
 
-const messagesContainer = document.getElementById("messages");
-const messageInput = document.getElementById("message-input");
-const sendButton = document.getElementById("send-button");
+const emailInput =
+  document.getElementById("email");
+
+const passwordInput =
+  document.getElementById("password");
+
+const loginButton =
+  document.getElementById("login-button");
+
+const logoutButton =
+  document.getElementById("logout-button");
+
+const loginError =
+  document.getElementById("login-error");
+
+const messagesContainer =
+  document.getElementById("messages");
+
+const messageInput =
+  document.getElementById("message-input");
+
+const sendButton =
+  document.getElementById("send-button");
+
+
+// =========================
+// AKTUELLER BENUTZER
+// =========================
 
 let currentUser = null;
 
@@ -34,36 +59,52 @@ let currentUser = null;
 
 loginButton.addEventListener("click", async () => {
 
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
+  const email =
+    emailInput.value.trim();
+
+  const password =
+    passwordInput.value;
 
   loginError.textContent = "";
 
   if (!email || !password) {
+
     loginError.textContent =
       "Bitte E-Mail und Passwort eingeben.";
+
     return;
   }
 
   loginButton.disabled = true;
   loginButton.textContent = "Anmelden...";
 
-  const { data, error } =
+  const {
+    data,
+    error
+  } =
     await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
+      email,
+      password
     });
 
   loginButton.disabled = false;
   loginButton.textContent = "Anmelden";
 
   if (error) {
-    loginError.textContent = error.message;
-    console.error("Login-Fehler:", error);
+
+    loginError.textContent =
+      error.message;
+
+    console.error(
+      "Supabase Login Fehler:",
+      error
+    );
+
     return;
   }
 
-  currentUser = data.user;
+  currentUser =
+    data.user;
 
   showChat();
 });
@@ -73,17 +114,24 @@ loginButton.addEventListener("click", async () => {
 // LOGOUT
 // =========================
 
-logoutButton.addEventListener("click", async () => {
+logoutButton.addEventListener(
+  "click",
+  async () => {
 
-  await supabase.auth.signOut();
+    await supabase.auth.signOut();
 
-  currentUser = null;
+    currentUser = null;
 
-  chatScreen.classList.add("hidden");
-  loginScreen.classList.remove("hidden");
+    chatScreen.classList.add("hidden");
 
-  messagesContainer.innerHTML = "";
-});
+    loginScreen.classList.remove("hidden");
+
+    messagesContainer.innerHTML = "";
+
+    emailInput.value = "";
+    passwordInput.value = "";
+  }
+);
 
 
 // =========================
@@ -93,6 +141,7 @@ logoutButton.addEventListener("click", async () => {
 function showChat() {
 
   loginScreen.classList.add("hidden");
+
   chatScreen.classList.remove("hidden");
 
   loadMessages();
@@ -105,17 +154,25 @@ function showChat() {
 
 async function loadMessages() {
 
-  const { data, error } = await supabase
-    .from("messages")
-    .select("*")
-    .order("created_at", {
-      ascending: true
-    });
+  if (!currentUser) {
+    return;
+  }
+
+  const {
+    data,
+    error
+  } =
+    await supabase
+      .from("messages")
+      .select("*")
+      .order("created_at", {
+        ascending: true
+      });
 
   if (error) {
 
     console.error(
-      "Fehler beim Laden der Nachrichten:",
+      "Fehler beim Laden:",
       error
     );
 
@@ -124,9 +181,13 @@ async function loadMessages() {
 
   messagesContainer.innerHTML = "";
 
-  data.forEach(message => {
-    displayMessage(message);
-  });
+  data.forEach(
+    message => {
+
+      displayMessage(message);
+
+    }
+  );
 
   scrollToBottom();
 }
@@ -141,32 +202,53 @@ function displayMessage(message) {
   const messageElement =
     document.createElement("div");
 
-  messageElement.classList.add("message");
+  messageElement.classList.add(
+    "message"
+  );
 
-  if (message.user_id === currentUser.id) {
 
-    messageElement.classList.add("mine");
+  // Eigene Nachricht
+
+  if (
+    currentUser &&
+    message.user_id === currentUser.id
+  ) {
+
+    messageElement.classList.add(
+      "mine"
+    );
 
   } else {
 
-    messageElement.classList.add("theirs");
-
+    messageElement.classList.add(
+      "theirs"
+    );
   }
+
+
+  // Text
 
   if (message.content) {
 
     const text =
       document.createElement("div");
 
-    text.textContent = message.content;
+    text.textContent =
+      message.content;
 
-    messageElement.appendChild(text);
+    messageElement.appendChild(
+      text
+    );
   }
+
+
+  // Zeit
 
   const timestamp =
     document.createElement("span");
 
-  timestamp.className = "timestamp";
+  timestamp.className =
+    "timestamp";
 
   timestamp.textContent =
     new Date(
@@ -179,7 +261,10 @@ function displayMessage(message) {
       }
     );
 
-  messageElement.appendChild(timestamp);
+  messageElement.appendChild(
+    timestamp
+  );
+
 
   messagesContainer.appendChild(
     messageElement
@@ -196,13 +281,19 @@ async function sendMessage() {
   const content =
     messageInput.value.trim();
 
-  if (!content || !currentUser) {
+  if (
+    !content ||
+    !currentUser
+  ) {
+
     return;
   }
 
   sendButton.disabled = true;
 
-  const { error } =
+  const {
+    error
+  } =
     await supabase
       .from("messages")
       .insert({
@@ -220,7 +311,8 @@ async function sendMessage() {
     );
 
     alert(
-      "Nachricht konnte nicht gesendet werden."
+      "Nachricht konnte nicht gesendet werden:\n\n" +
+      error.message
     );
 
     return;
@@ -241,7 +333,7 @@ sendButton.addEventListener(
 
 
 // =========================
-// ENTER = SENDEN
+// ENTER SENDEN
 // =========================
 
 messageInput.addEventListener(
@@ -259,7 +351,7 @@ messageInput.addEventListener(
 
 
 // =========================
-// LIVE-NACHRICHTEN
+// REALTIME
 // =========================
 
 supabase
@@ -291,7 +383,7 @@ supabase
 
 
 // =========================
-// NACH UNTEN SCROLLEN
+// SCROLL
 // =========================
 
 function scrollToBottom() {
@@ -302,26 +394,42 @@ function scrollToBottom() {
 
 
 // =========================
-// BEREITS EINGELOGGT?
+// SESSION PRÜFEN
 // =========================
 
 async function checkSession() {
 
   const {
-    data: {
-      session
-    }
+    data,
+    error
   } =
     await supabase.auth.getSession();
 
-  if (session) {
+  if (error) {
+
+    console.error(
+      "Session-Fehler:",
+      error
+    );
+
+    return;
+  }
+
+  if (
+    data &&
+    data.session
+  ) {
 
     currentUser =
-      session.user;
+      data.session.user;
 
     showChat();
   }
 }
 
+
+// =========================
+// START
+// =========================
 
 checkSession();
