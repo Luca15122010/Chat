@@ -54,10 +54,10 @@ loginButton.addEventListener("click", async () => {
   loginButton.textContent = "Anmelden";
 
   if (error) {
-    loginError.textContent = "Anmeldung fehlgeschlagen.";
-    console.error(error);
-    return;
-  }
+  loginError.textContent = error.message;
+  console.error(error);
+  return;
+}
 
   currentUser = data.user;
 
