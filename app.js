@@ -10,6 +10,11 @@ const supabase = createClient(
   SUPABASE_KEY
 );
 
+
+// ===============================
+// ELEMENTE
+// ===============================
+
 const loginScreen = document.getElementById("login-screen");
 const chatScreen = document.getElementById("chat-screen");
 
@@ -24,6 +29,7 @@ const loginError = document.getElementById("login-error");
 const messagesContainer = document.getElementById("messages");
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
+
 const fileInput = document.getElementById("file-input");
 
 let currentUser = null;
@@ -34,6 +40,7 @@ let currentUser = null;
 // ===============================
 
 loginButton.addEventListener("click", async () => {
+
   const email = emailInput.value.trim();
   const password = passwordInput.value;
 
@@ -74,6 +81,7 @@ loginButton.addEventListener("click", async () => {
 // ===============================
 
 logoutButton.addEventListener("click", async () => {
+
   await supabase.auth.signOut();
 
   currentUser = null;
@@ -90,6 +98,7 @@ logoutButton.addEventListener("click", async () => {
 // ===============================
 
 function showChat() {
+
   loginScreen.classList.add("hidden");
   chatScreen.classList.remove("hidden");
 
@@ -98,11 +107,42 @@ function showChat() {
 
 
 // ===============================
+// AUSGEBLENDETE NACHRICHTEN
+// ===============================
+
+async function getHiddenMessageIds() {
+
+  const { data, error } =
+    await supabase
+      .from("hidden_messages")
+      .select("message_id")
+      .eq("user_id", currentUser.id);
+
+  if (error) {
+    console.error(
+      "Hidden messages:",
+      error
+    );
+
+    return new Set();
+  }
+
+  return new Set(
+    data.map(item => item.message_id)
+  );
+}
+
+
+// ===============================
 // NACHRICHTEN LADEN
 // ===============================
 
 async function loadMessages() {
+
   if (!currentUser) return;
+
+  const hiddenIds =
+    await getHiddenMessageIds();
 
   const { data, error } =
     await supabase
@@ -113,14 +153,25 @@ async function loadMessages() {
       });
 
   if (error) {
-    console.error("Nachrichten:", error);
+
+    console.error(
+      "Nachrichten:",
+      error
+    );
+
     return;
   }
 
   messagesContainer.innerHTML = "";
 
   data.forEach(message => {
+
+    if (hiddenIds.has(message.id)) {
+      return;
+    }
+
     displayMessage(message);
+
   });
 
   scrollToBottom();
@@ -132,23 +183,27 @@ async function loadMessages() {
 // ===============================
 
 function displayMessage(message) {
+
   const messageElement =
     document.createElement("div");
 
   messageElement.classList.add("message");
 
-  if (
+  const isMine =
     currentUser &&
-    message.user_id === currentUser.id
-  ) {
+    message.user_id === currentUser.id;
+
+  if (isMine) {
     messageElement.classList.add("mine");
   } else {
     messageElement.classList.add("theirs");
   }
 
+
   // TEXT
 
   if (message.content) {
+
     const text =
       document.createElement("div");
 
@@ -158,45 +213,65 @@ function displayMessage(message) {
     messageElement.appendChild(text);
   }
 
+
   // BILD
 
   if (
     message.file_url &&
-    message.file_type?.startsWith("image/")
+    message.file_type &&
+    message.file_type.startsWith("image/")
   ) {
+
     const image =
       document.createElement("img");
 
-    image.src = message.file_url;
-    image.alt = "Bild";
-    image.loading = "lazy";
+    image.src =
+      message.file_url;
+
+    image.alt =
+      "Bild";
+
+    image.loading =
+      "lazy";
 
     messageElement.appendChild(image);
   }
+
 
   // VIDEO
 
   if (
     message.file_url &&
-    message.file_type?.startsWith("video/")
+    message.file_type &&
+    message.file_type.startsWith("video/")
   ) {
+
     const video =
       document.createElement("video");
 
-    video.src = message.file_url;
-    video.controls = true;
-    video.playsInline = true;
-    video.preload = "metadata";
+    video.src =
+      message.file_url;
+
+    video.controls =
+      true;
+
+    video.playsInline =
+      true;
+
+    video.preload =
+      "metadata";
 
     messageElement.appendChild(video);
   }
+
 
   // ZEIT
 
   const timestamp =
     document.createElement("span");
 
-  timestamp.className = "timestamp";
+  timestamp.className =
+    "timestamp";
 
   timestamp.textContent =
     new Date(
@@ -209,7 +284,121 @@ function displayMessage(message) {
       }
     );
 
-  messageElement.appendChild(timestamp);
+  messageElement.appendChild(
+    timestamp
+  );
+
+
+  // ===============================
+  // LÖSCHEN
+  // ===============================
+
+  const deleteButton =
+    document.createElement("button");
+
+  deleteButton.textContent =
+    "Löschen";
+
+  deleteButton.className =
+    "delete-button";
+
+
+  deleteButton.addEventListener(
+    "click",
+    async () => {
+
+      const confirmed =
+        confirm(
+          isMine
+            ? "Nachricht für beide löschen?"
+            : "Nachricht nur für dich löschen?"
+        );
+
+      if (!confirmed) return;
+
+
+      // =========================
+      // EIGENE NACHRICHT
+      // =========================
+      //
+      // Wird für BEIDE gelöscht.
+      //
+
+      if (isMine) {
+
+        const { error } =
+          await supabase
+            .from("messages")
+            .delete()
+            .eq("id", message.id)
+            .eq(
+              "user_id",
+              currentUser.id
+            );
+
+        if (error) {
+
+          console.error(
+            "Löschen:",
+            error
+          );
+
+          alert(
+            "Löschen fehlgeschlagen:\n\n" +
+            error.message
+          );
+
+          return;
+        }
+
+
+        messageElement.remove();
+
+        return;
+      }
+
+
+      // =========================
+      // NACHRICHT DER FREUNDIN
+      // =========================
+      //
+      // Nur bei DIR ausblenden.
+      //
+
+      const { error } =
+        await supabase
+          .from("hidden_messages")
+          .insert({
+            message_id:
+              message.id,
+
+            user_id:
+              currentUser.id
+          });
+
+      if (error) {
+
+        console.error(
+          "Ausblenden:",
+          error
+        );
+
+        alert(
+          "Nachricht konnte nicht ausgeblendet werden:\n\n" +
+          error.message
+        );
+
+        return;
+      }
+
+      messageElement.remove();
+    }
+  );
+
+
+  messageElement.appendChild(
+    deleteButton
+  );
 
   messagesContainer.appendChild(
     messageElement
@@ -218,10 +407,11 @@ function displayMessage(message) {
 
 
 // ===============================
-// TEXTNACHRICHT SENDEN
+// TEXT SENDEN
 // ===============================
 
 async function sendMessage() {
+
   const content =
     messageInput.value.trim();
 
@@ -235,14 +425,21 @@ async function sendMessage() {
     await supabase
       .from("messages")
       .insert({
-        user_id: currentUser.id,
-        content: content
+        user_id:
+          currentUser.id,
+
+        content:
+          content
       });
 
   sendButton.disabled = false;
 
   if (error) {
-    console.error("Senden:", error);
+
+    console.error(
+      "Senden:",
+      error
+    );
 
     alert(
       "Nachricht konnte nicht gesendet werden:\n\n" +
@@ -261,6 +458,7 @@ async function sendMessage() {
 // ===============================
 
 async function uploadFile(file) {
+
   if (!currentUser || !file) {
     return;
   }
@@ -272,6 +470,7 @@ async function uploadFile(file) {
     file.type.startsWith("video/");
 
   if (!isImage && !isVideo) {
+
     alert(
       "Bitte nur Bilder oder Videos auswählen."
     );
@@ -279,18 +478,21 @@ async function uploadFile(file) {
     return;
   }
 
-  // Maximale Dateigröße: 100 MB
+
+  // 50 MB
 
   const maxSize =
-    100 * 1024 * 1024;
+    50 * 1024 * 1024;
 
   if (file.size > maxSize) {
+
     alert(
-      "Die Datei darf maximal 100 MB groß sein."
+      "Die Datei darf maximal 50 MB groß sein."
     );
 
     return;
   }
+
 
   const extension =
     file.name.includes(".")
@@ -305,13 +507,16 @@ async function uploadFile(file) {
   const filePath =
     `${currentUser.id}/${fileName}`;
 
+
   fileInput.disabled = true;
 
   try {
 
-    // Upload
+    // UPLOAD
 
-    const { error: uploadError } =
+    const {
+      error: uploadError
+    } =
       await supabase.storage
         .from(BUCKET)
         .upload(
@@ -325,6 +530,7 @@ async function uploadFile(file) {
         );
 
     if (uploadError) {
+
       console.error(
         "Upload:",
         uploadError
@@ -339,7 +545,7 @@ async function uploadFile(file) {
     }
 
 
-    // Sichere URL
+    // SIGNIERTE URL
 
     const {
       data: urlData,
@@ -353,6 +559,7 @@ async function uploadFile(file) {
         );
 
     if (urlError) {
+
       console.error(
         "URL:",
         urlError
@@ -366,26 +573,36 @@ async function uploadFile(file) {
     }
 
 
-    // Datei als Chatnachricht speichern
+    // NACHRICHT ERSTELLEN
 
-    const { error: messageError } =
+    const {
+      error: messageError
+    } =
       await supabase
         .from("messages")
         .insert({
-          user_id: currentUser.id,
-          content: null,
-          file_url: urlData.signedUrl,
-          file_type: file.type
+          user_id:
+            currentUser.id,
+
+          content:
+            null,
+
+          file_url:
+            urlData.signedUrl,
+
+          file_type:
+            file.type
         });
 
     if (messageError) {
+
       console.error(
         "Message:",
         messageError
       );
 
       alert(
-        "Datei wurde hochgeladen, konnte aber nicht im Chat gespeichert werden:\n\n" +
+        "Datei wurde hochgeladen, aber nicht im Chat gespeichert:\n\n" +
         messageError.message
       );
 
@@ -393,7 +610,9 @@ async function uploadFile(file) {
     }
 
   } finally {
+
     fileInput.disabled = false;
+
     fileInput.value = "";
   }
 }
@@ -406,6 +625,7 @@ async function uploadFile(file) {
 fileInput.addEventListener(
   "change",
   async () => {
+
     const file =
       fileInput.files?.[0];
 
@@ -433,8 +653,11 @@ sendButton.addEventListener(
 messageInput.addEventListener(
   "keydown",
   event => {
+
     if (event.key === "Enter") {
+
       event.preventDefault();
+
       sendMessage();
     }
   }
@@ -447,6 +670,7 @@ messageInput.addEventListener(
 
 supabase
   .channel("messages-channel")
+
   .on(
     "postgres_changes",
     {
@@ -454,14 +678,40 @@ supabase
       schema: "public",
       table: "messages"
     },
+
     payload => {
+
       if (!currentUser) return;
 
-      displayMessage(payload.new);
+      displayMessage(
+        payload.new
+      );
 
       scrollToBottom();
     }
   )
+
+  .on(
+    "postgres_changes",
+    {
+      event: "DELETE",
+      schema: "public",
+      table: "messages"
+    },
+
+    payload => {
+
+      const element =
+        document.querySelector(
+          `[data-message-id="${payload.old.id}"]`
+        );
+
+      if (element) {
+        element.remove();
+      }
+    }
+  )
+
   .subscribe();
 
 
@@ -470,6 +720,7 @@ supabase
 // ===============================
 
 function scrollToBottom() {
+
   messagesContainer.scrollTop =
     messagesContainer.scrollHeight;
 }
@@ -480,6 +731,7 @@ function scrollToBottom() {
 // ===============================
 
 async function checkSession() {
+
   const {
     data,
     error
@@ -487,6 +739,7 @@ async function checkSession() {
     await supabase.auth.getSession();
 
   if (error) {
+
     console.error(
       "Session:",
       error
@@ -496,6 +749,7 @@ async function checkSession() {
   }
 
   if (data.session) {
+
     currentUser =
       data.session.user;
 
