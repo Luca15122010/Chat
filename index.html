@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unser Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>Unser Chat</h1>
+      <p>Privater Chat</p>
+
+      <input
+        id="email"
+        type="email"
+        placeholder="E-Mail"
+        autocomplete="email"
+      >
+
+      <input
+        id="password"
+        type="password"
+        placeholder="Passwort"
+        autocomplete="current-password"
+      >
+
+      <button id="login-button">Anmelden</button>
+
+      <p id="login-error"></p>
+    </div>
+  </div>
+
+
+  <div id="chat-screen" class="hidden">
+
+    <header>
+      <div>
+        <h1>Unser Chat</h1>
+        <span id="online-status">Verbunden</span>
+      </div>
+
+      <button id="logout-button">Abmelden</button>
+    </header>
+
+
+    <main id="messages"></main>
+
+
+    <div class="input-area">
+
+      <label for="file-input" class="file-button">
+        +
+      </label>
+
+      <input
+        id="file-input"
+        type="file"
+        accept="image/*,video/*"
+        hidden
+      >
+
+      <input
+        id="message-input"
+        type="text"
+        placeholder="Nachricht schreiben..."
+        autocomplete="off"
+      >
+
+      <button id="send-button">
+        Senden
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <script type="module" src="app.js"></script>
+
+</body>
+</html>
