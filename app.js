@@ -79,6 +79,11 @@ loginButton.addEventListener("click", async () => {
 
   currentUser = data.user;
 
+  console.log(
+    "Eingeloggt:",
+    currentUser.id
+  );
+
   showChat();
 });
 
@@ -101,7 +106,7 @@ logoutButton.addEventListener("click", async () => {
 
 
 // ==========================================
-// CHAT ANZEIGEN
+// CHAT
 // ==========================================
 
 function showChat() {
@@ -114,7 +119,7 @@ function showChat() {
 
 
 // ==========================================
-// AUSGEBLENDETE NACHRICHTEN LADEN
+// HIDDEN MESSAGES
 // ==========================================
 
 async function getHiddenMessageIds() {
@@ -135,7 +140,7 @@ async function getHiddenMessageIds() {
   if (error) {
 
     console.error(
-      "Fehler bei hidden_messages:",
+      "Hidden messages:",
       error
     );
 
@@ -149,7 +154,7 @@ async function getHiddenMessageIds() {
 
 
 // ==========================================
-// ALLE NACHRICHTEN LADEN
+// NACHRICHTEN LADEN
 // ==========================================
 
 async function loadMessages() {
@@ -172,7 +177,7 @@ async function loadMessages() {
   if (error) {
 
     console.error(
-      "Fehler beim Laden:",
+      "Nachrichten:",
       error
     );
 
@@ -181,16 +186,16 @@ async function loadMessages() {
 
   messagesContainer.innerHTML = "";
 
-  for (const message of data) {
+  data.forEach(message => {
 
     if (
       hiddenIds.has(message.id)
     ) {
-      continue;
+      return;
     }
 
     displayMessage(message);
-  }
+  });
 
   scrollToBottom();
 }
@@ -206,9 +211,6 @@ function displayMessage(message) {
     return;
   }
 
-
-  // Prüfen, ob Nachricht bereits existiert
-
   const existing =
     document.querySelector(
       `[data-message-id="${message.id}"]`
@@ -217,7 +219,6 @@ function displayMessage(message) {
   if (existing) {
     return;
   }
-
 
   const messageElement =
     document.createElement("div");
@@ -228,29 +229,18 @@ function displayMessage(message) {
   messageElement.dataset.messageId =
     message.id;
 
-
   const isMine =
     currentUser &&
     message.user_id === currentUser.id;
 
-
   if (isMine) {
-
-    messageElement.classList.add(
-      "mine"
-    );
-
+    messageElement.classList.add("mine");
   } else {
-
-    messageElement.classList.add(
-      "theirs"
-    );
+    messageElement.classList.add("theirs");
   }
 
 
-  // ========================================
   // TEXT
-  // ========================================
 
   if (message.content) {
 
@@ -266,16 +256,12 @@ function displayMessage(message) {
   }
 
 
-  // ========================================
   // BILD
-  // ========================================
 
   if (
     message.file_url &&
     message.file_type &&
-    message.file_type.startsWith(
-      "image/"
-    )
+    message.file_type.startsWith("image/")
   ) {
 
     const image =
@@ -302,16 +288,12 @@ function displayMessage(message) {
   }
 
 
-  // ========================================
   // VIDEO
-  // ========================================
 
   if (
     message.file_url &&
     message.file_type &&
-    message.file_type.startsWith(
-      "video/"
-    )
+    message.file_type.startsWith("video/")
   ) {
 
     const video =
@@ -341,9 +323,7 @@ function displayMessage(message) {
   }
 
 
-  // ========================================
   // ZEIT
-  // ========================================
 
   const timestamp =
     document.createElement("span");
@@ -367,9 +347,7 @@ function displayMessage(message) {
   );
 
 
-  // ========================================
   // LÖSCHEN
-  // ========================================
 
   const deleteButton =
     document.createElement("button");
@@ -380,7 +358,6 @@ function displayMessage(message) {
   deleteButton.className =
     "delete-button";
 
-
   deleteButton.addEventListener(
     "click",
     async () => {
@@ -389,16 +366,12 @@ function displayMessage(message) {
 
         const confirmed =
           confirm(
-            "Diese Nachricht für beide löschen?"
+            "Nachricht für beide löschen?"
           );
 
         if (!confirmed) {
           return;
         }
-
-
-        // Eigene Nachricht:
-        // vollständig aus messages löschen
 
         const { error } =
           await supabase
@@ -415,11 +388,6 @@ function displayMessage(message) {
 
         if (error) {
 
-          console.error(
-            "Delete-Fehler:",
-            error
-          );
-
           alert(
             "Löschen fehlgeschlagen:\n\n" +
             error.message
@@ -428,25 +396,18 @@ function displayMessage(message) {
           return;
         }
 
-
-        // Sofort lokal entfernen
-
         messageElement.remove();
 
       } else {
 
         const confirmed =
           confirm(
-            "Diese Nachricht nur bei dir ausblenden?"
+            "Nachricht nur bei dir ausblenden?"
           );
 
         if (!confirmed) {
           return;
         }
-
-
-        // Nachricht der Freundin:
-        // nur für diesen Benutzer ausblenden
 
         const { error } =
           await supabase
@@ -461,30 +422,22 @@ function displayMessage(message) {
 
         if (error) {
 
-          console.error(
-            "Hide-Fehler:",
-            error
-          );
-
           alert(
-            "Nachricht konnte nicht ausgeblendet werden:\n\n" +
+            "Ausblenden fehlgeschlagen:\n\n" +
             error.message
           );
 
           return;
         }
 
-
         messageElement.remove();
       }
     }
   );
 
-
   messageElement.appendChild(
     deleteButton
   );
-
 
   messagesContainer.appendChild(
     messageElement
@@ -508,21 +461,64 @@ async function sendMessage() {
     return;
   }
 
+
+  // AKTUELLEN USER DIREKT VON SUPABASE HOLEN
+
+  const {
+    data: userData,
+    error: userError
+  } =
+    await supabase.auth.getUser();
+
+
+  if (
+    userError ||
+    !userData.user
+  ) {
+
+    alert(
+      "Keine gültige Anmeldung vorhanden."
+    );
+
+    console.error(
+      "User:",
+      userError
+    );
+
+    return;
+  }
+
+
+  const userId =
+    userData.user.id;
+
+
+  console.log(
+    "User-ID beim Senden:",
+    userId
+  );
+
+
   sendButton.disabled =
     true;
 
-  const { data, error } =
+
+  const {
+    data,
+    error
+  } =
     await supabase
       .from("messages")
       .insert({
         user_id:
-          currentUser.id,
+          userId,
 
         content:
           content
       })
       .select()
       .single();
+
 
   sendButton.disabled =
     false;
@@ -531,20 +527,22 @@ async function sendMessage() {
   if (error) {
 
     console.error(
-      "Send-Fehler:",
+      "SEND ERROR:",
       error
     );
 
     alert(
       "Nachricht konnte nicht gesendet werden:\n\n" +
-      error.message
+      error.message +
+      "\n\nUser-ID:\n" +
+      userId
     );
 
     return;
   }
 
 
-  // SOFORT anzeigen
+  // SOFORT ANZEIGEN
 
   displayMessage(data);
 
@@ -567,17 +565,11 @@ async function uploadFile(file) {
     return;
   }
 
-
   const isImage =
-    file.type.startsWith(
-      "image/"
-    );
+    file.type.startsWith("image/");
 
   const isVideo =
-    file.type.startsWith(
-      "video/"
-    );
-
+    file.type.startsWith("video/");
 
   if (
     !isImage &&
@@ -591,8 +583,6 @@ async function uploadFile(file) {
     return;
   }
 
-
-  // 50 MB
 
   const maxSize =
     50 * 1024 * 1024;
@@ -631,10 +621,6 @@ async function uploadFile(file) {
 
   try {
 
-    // ======================================
-    // UPLOAD
-    // ======================================
-
     const {
       error: uploadError
     } =
@@ -658,23 +644,18 @@ async function uploadFile(file) {
 
     if (uploadError) {
 
-      console.error(
-        "Upload:",
-        uploadError
-      );
-
       alert(
         "Upload fehlgeschlagen:\n\n" +
         uploadError.message
       );
 
+      console.error(
+        uploadError
+      );
+
       return;
     }
 
-
-    // ======================================
-    // SIGNIERTE URL
-    // ======================================
 
     const {
       data: urlData,
@@ -690,22 +671,13 @@ async function uploadFile(file) {
 
     if (urlError) {
 
-      console.error(
-        "URL:",
-        urlError
-      );
-
       alert(
-        "Die Datei wurde hochgeladen, aber die URL konnte nicht erstellt werden."
+        "URL konnte nicht erstellt werden."
       );
 
       return;
     }
 
-
-    // ======================================
-    // NACHRICHT ERSTELLEN
-    // ======================================
 
     const {
       data: message,
@@ -732,21 +704,14 @@ async function uploadFile(file) {
 
     if (messageError) {
 
-      console.error(
-        "Message:",
-        messageError
-      );
-
       alert(
-        "Datei wurde hochgeladen, aber nicht im Chat gespeichert:\n\n" +
+        "Datei wurde hochgeladen, aber konnte nicht als Nachricht gespeichert werden:\n\n" +
         messageError.message
       );
 
       return;
     }
 
-
-    // SOFORT ANZEIGEN
 
     displayMessage(message);
 
@@ -784,7 +749,7 @@ fileInput.addEventListener(
 
 
 // ==========================================
-// SENDEN BUTTON
+// SENDEN
 // ==========================================
 
 sendButton.addEventListener(
@@ -794,7 +759,7 @@ sendButton.addEventListener(
 
 
 // ==========================================
-// ENTER = SENDEN
+// ENTER
 // ==========================================
 
 messageInput.addEventListener(
@@ -802,8 +767,7 @@ messageInput.addEventListener(
   event => {
 
     if (
-      event.key ===
-      "Enter"
+      event.key === "Enter"
     ) {
 
       event.preventDefault();
@@ -823,35 +787,21 @@ supabase
     "messages-channel"
   )
 
-  // ========================================
-  // NEUE NACHRICHT
-  // ========================================
-
   .on(
     "postgres_changes",
     {
-      event:
-        "INSERT",
-
-      schema:
-        "public",
-
-      table:
-        "messages"
+      event: "INSERT",
+      schema: "public",
+      table: "messages"
     },
-
     async payload => {
 
-      if (
-        !currentUser
-      ) {
+      if (!currentUser) {
         return;
       }
 
-
       const hiddenIds =
         await getHiddenMessageIds();
-
 
       if (
         hiddenIds.has(
@@ -861,7 +811,6 @@ supabase
         return;
       }
 
-
       displayMessage(
         payload.new
       );
@@ -870,24 +819,13 @@ supabase
     }
   )
 
-
-  // ========================================
-  // GELÖSCHTE NACHRICHT
-  // ========================================
-
   .on(
     "postgres_changes",
     {
-      event:
-        "DELETE",
-
-      schema:
-        "public",
-
-      table:
-        "messages"
+      event: "DELETE",
+      schema: "public",
+      table: "messages"
     },
-
     payload => {
 
       const element =
@@ -900,7 +838,6 @@ supabase
       }
     }
   )
-
 
   .subscribe();
 
@@ -917,7 +854,7 @@ function scrollToBottom() {
 
 
 // ==========================================
-// SESSION PRÜFEN
+// SESSION
 // ==========================================
 
 async function checkSession() {
